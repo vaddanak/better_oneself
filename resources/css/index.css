@@ -1,9 +1,20 @@
- body {
+body {
     background-color: black;
     color: white;
- }
+
+    height: 600px;
+}
 
 
- #msg {
+#msg {
     color: yellow;
- }
+}
+
+
+iframe#code-display {
+    width: 100%;
+    
+}
+
+
+
