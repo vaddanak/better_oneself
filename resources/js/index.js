@@ -38,8 +38,13 @@ document.querySelector("#left-section > button:first-child").click();
 
 iframe.addEventListener("load", function(event){    
 
-    //iframe.style.width = (iframe.contentWindow.document.body.scrollWidth + 20) + "px";
-    iframe.style.height = (iframe.contentWindow.document.body.scrollHeight + 35) + "px";
+    //iframe.style.width = (iframe.contentWindow.document.body.scrollWidth ) + "px";
+    //iframe.style.height = (iframe.contentWindow.document.body.scrollHeight + 35) + "px";
 
-    console.log(`IFRAME LOAD width:${iframe.style.width} height:${iframe.style.height}`);
+    
+    iframe.height = window.innerHeight * .95;
+    
+    //console.log(`IFRAME LOAD width:${iframe.style.width} height:${iframe.style.height}`);
+
+    
 });

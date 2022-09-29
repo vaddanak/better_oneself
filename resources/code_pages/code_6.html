@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<HTML lang="en-US">
+<HEAD>
+    <link rel="stylesheet" href="code_page.css">
+    <title>Code Page Template</title>
+    <style>
+        /* body {
+            background-color: black;
+            color: white;
+        } */
+    </style>
+</HEAD>
+<BODY >
+<pre id="code">
+<code>
+    /******************************************************************************
+    *  File: bst.h
+    *  Author:  Vaddanak Seng
+    *  Purpose: The header file contains BinarySearchTree class template definition
+    *     and implementation.  The data stored in this binary search tree are
+    *     expected to be unique and adhere to properties of a binary search tree:
+    *     for a given node, all left descendants are less than and all right
+    *     descendants are greater than.
+    *
+    *     NOTE:
+    *     User-defined T types MUST be able to convert "int" type to T type
+    *     as a result of the provided "remove" function, particularly line
+    *     "itemLocation->data = -1".  One could accomplish this by implementing
+    *     constructor T::T(const int&) or T::operator=(const int&).
+    ******************************************************************************/
+    
+    #ifndef BST_H_
+    #define BST_H_
+    
+    #include <iostream>
+    #include <iomanip>
+    
+    //global variables
+    const int INDENT_VALUE = 8;
+    static bool debug = false;
+    
+    /**
+     * Class to hold binary search trees
+     * 
+     * Note that this binary search requires that all items be unique
+     */
+    template <class T>
+    class BinarySearchTree {
+       private: //tree node
+          class Node {
+             public:
+                T data;
+                Node * left;
+                Node * right;
+                Node * parent;
+                
+                Node():left(NULL),right(NULL),parent(NULL) {}
+                Node(const T& item) {
+                   data=item;
+                   left=NULL;
+                   right=NULL;
+                   parent=NULL;
+                } 
+          };
+       public:
+          BinarySearchTree();
+          BinarySearchTree(const BinarySearchTree&);
+          
+          ~BinarySearchTree();
+          
+          bool isEmpty() const;
+          bool search(const T&) const;
+          
+          T getSuccessor(const T&) const;
+          T getPredecessor(const T&) const;
+          T getMinimum() const;
+          T getMaximum() const;
+          int getHeight() const;
+          int getSize() const;
+          
+          void inorder(std::ostream&) const;
+          void postorder(std::ostream&) const;
+          void preorder(std::ostream&) const;
+          
+          bool insert(const T&);
+          bool remove(const T&);
+          
+          void displayGraphic(std::ostream&) const;
+          
+          BinarySearchTree& operator=(const BinarySearchTree& rhs);
+       private:
+          Node * _root;
+          
+          void searchHelper(const T&, Node *, Node * &) const;
+          void searchParent(const T&, Node *, Node * &) const;
+          void getMaximumHelper(Node *, Node * &) const;
+          void getMinimumHelper(Node *, Node * &) const;
+          
+          void inorderHelper(std::ostream&, Node *) const;
+          void preorderHelper(std::ostream&, Node *) const;
+          void postorderHelper(std::ostream&, Node *) const;
+          
+          void displayGraphicHelper(std::ostream&, const int&, Node *) const;      
+          
+          void getSuccessorHelper(Node *, Node * &) const;
+          void getPredecessorHelper(Node *, Node * &) const;
+          
+          void copyBinarySearchTree(Node *, Node * &);
+          void deleteBinarySearchTree(Node * &);
+          
+          //additional helper functions
+          void findHeight(Node * subtree, int& height) const;
+          void findSize(Node * subtree, int& size) const;      
+          void copyBinarySearchTree(Node*, Node*&, Node**);
+    };
+    
+    /*****************************************************************************/
+    /********************** Constructors *****************************************/
+    /*****************************************************************************/
+    
+    /**
+     * Construct a Binary Search Tree Object
+     * 
+     * Precondition: None
+     * Postcondition: An empty BST has been constructed
+     * 
+     * Worst-Case Time Complexity: O(1)
+     */
+    template<class T>
+    BinarySearchTree<T>::BinarySearchTree() {
+       _root = NULL;
+    }
+    
+    /**
+     * Copy constructor for a Binary Search Tree Object
+     * 
+     * Precondition: Original is a Binary Search Tree
+     * Postcondition: An empty BST has been constructed
+     * 
+     * Worst-Case Time Complexity: O(1)
+     */
+    template<class T>
+    BinarySearchTree<T>::BinarySearchTree(const BinarySearchTree& original) {   
+       _root = NULL;
+       copyBinarySearchTree(original._root, _root);
+    }
+    
+    /*****************************************************************************/
+    /********************** Destructor *******************************************/
+    /*****************************************************************************/
+    
+    /**
+     * Destructor for a Binary Search Tree
+     * 
+     * Precondition: The life of the binary search tree is over
+     * Postcondition: Memory used by the binary search tree is freed
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template<class T>
+    BinarySearchTree<T>::~BinarySearchTree() {
+       deleteBinarySearchTree(_root);
+    }
+    
+    /*****************************************************************************/
+    /********************** Accessors ********************************************/
+    /*****************************************************************************/
+    
+    /**
+     * Check if the Binary Search Tree is empty
+     * 
+     * Precondition: None
+     * Postcondition: Return true if the Binary Search Tree is empty and false
+     *    otherwise
+     * 
+     * Worst-Case Time Complexity
+     */
+    template <class T>
+    bool BinarySearchTree<T>::isEmpty() const {
+       return (_root==NULL);
+    }
+    
+    /**
+     * Search the binary search tree for an item
+     * 
+     * Precondition: None
+     * Postcondition: Returns true if item found, and false otherwise
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    bool BinarySearchTree<T>::search(const T& item) const {
+       bool found = false;
+       Node * currentRoot = _root;
+       while(currentRoot) {
+          if(currentRoot->data == item) {
+             found = true;
+             break;
+          }
+          if(item &lt; currentRoot->data)
+             currentRoot = currentRoot->left;
+          else
+             currentRoot = currentRoot->right;         
+       }
+       return found;   
+    }
+    
+    /**
+     * Search the binary search tree for an item
+     * 
+     * Precondition: subtreePtr points to a subtree of this binary search tree
+     * Postcondition: Set itemLocation to point to the item if it is found and to 
+     *    NULL otherwise
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    void BinarySearchTree<T>::searchHelper(const T& item,
+                                           Node * subtreePtr, 
+                                           Node * &itemLocation) const {
+       // if this is an empty binary search tree, return null 
+       if (subtreePtr==NULL) {
+          itemLocation = NULL;
+          return;
+       }
+       
+       // if this is the item we are looking for, return this item
+       if (subtreePtr->data==item) {
+          itemLocation = subtreePtr;
+          return;
+       }
+       
+       // look for the parent of the specified item
+       Node * parent = NULL;
+       searchParent(item, subtreePtr, parent);
+          
+       // return the appropriate child
+       if (item &lt; parent->data) {
+          itemLocation = parent->left;
+       } else {
+          itemLocation = parent->right;
+       }
+    }
+    
+    /**
+     * Search the binary tree for the parent for an item
+     * 
+     * Precondition: subtreePtr points to a subtree of this binary search tree
+     * Postcondition: Sets itemLocation to point to the direct parent of the node 
+     *    that contains item OR sets itemLocation to point to the node that will be
+     *    the parent of a node that contains item if item is inserted into the tree
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    void BinarySearchTree<T>::searchParent(const T& item, 
+                                           Node * subtreePtr, 
+                                           Node * &parentLocation) const {
+       // if this is an empty tree return NULL
+       if (subtreePtr==NULL) {
+          parentLocation = NULL;
+          return;
+       }
+       
+       // if we have found what we are looking for, then return
+       if (item==subtreePtr->data) {
+          parentLocation = subtreePtr->parent;
+          return;
+       }
+       
+       // holds a pointer to the next subtree that we will look at
+       Node * nextSubtree = NULL;
+       
+       if (item &lt; subtreePtr->data) { // smaller items in left subtree
+          nextSubtree = subtreePtr->left;
+       } else { // larger items in right subtree
+          nextSubtree = subtreePtr->right;      
+       }
+       
+       if (nextSubtree==NULL) {
+          parentLocation = subtreePtr;
+       } else {
+          searchParent(item,nextSubtree, parentLocation);
+       }
+    }
+    
+    /**
+     * Search the binary tree for the inorder successor of item. If the item is not 
+     * present in the tree, then return a garbage value
+     * 
+     * Precondition: None
+     * Postcondition: Returns the inorder successor of the node containing item.
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    T BinarySearchTree<T>::getSuccessor(const T& item) const {
+       // find the item in the tree
+       Node * location = NULL;
+       searchHelper(item,_root,location);
+       
+       if (location == NULL) { // item not in BST      
+          return T(); // garbage
+       }
+       
+       Node * successor = NULL;
+       getSuccessorHelper(location,successor);
+       
+       if (successor != NULL) {
+          return successor->data;
+       } else {      
+          return T(); // garbage
+       }
+    }
+    
+    /**
+     * Search the binary tree for the inorder successor of the node, item
+     * 
+     * Precondition: item points to a node in the binary search tree. 
+     *    succLocation points to NULL
+     * Postcondition: succLocation points to the inorder successor of item in the
+     *    binary search tree
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    void BinarySearchTree<T>::getSuccessorHelper(Node * item, 
+                                                 Node * &succLocation) const {
+       if (item->right==NULL) { // successor is an ancestor
+          succLocation = item->parent;
+          while (succLocation!=NULL && succLocation->data<item->data) {
+             succLocation=succLocation->parent;
+          }
+       } else { // successor is a descendant
+          getMinimumHelper(item->right,succLocation);
+       }
+    }
+    
+    /**
+     * Search the binary tree for the inorder predecessor of item. If the item is 
+     * not present in the tree, then return a garbage value
+     * 
+     * Precondition: None
+     * Postcondition: Returns the inorder predecessor of item
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    T BinarySearchTree<T>::getPredecessor(const T& item) const {
+       // find the item in the tree
+       Node * location = NULL;
+       searchHelper(item,_root,location);
+       
+       if (location == NULL) { // item not in BST      
+          return T(); // garbage
+       }
+       
+       Node * predecessor = NULL;
+       getPredecessorHelper(location,predecessor);
+       
+       if (predecessor != NULL) {
+          return predecessor->data;
+       } else {      
+          return T(); // garbage
+       }
+    }
+    
+    /**
+     * Search the binary tree for the inorder predecessor of the node, item
+     * 
+     * Precondition: item points to a node in the binary search tree. 
+     *    predLocation points to NULL
+     * Postcondition: predLocation points to the inorder predecessor of item in the
+     *    binary search tree
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    void BinarySearchTree<T>::getPredecessorHelper(Node * item, 
+                                                 Node * &predLocation) const {
+       if (item->left==NULL) { // predecessor is an ancestor
+          predLocation = item->parent;
+          while (predLocation!=NULL && predLocation->data>item->data) {
+             predLocation=predLocation->parent;
+          }
+       } else { // predecessor is a descendant
+          getMaximumHelper(item->left,predLocation);
+       }
+    }
+    
+    /**
+     * Determine the maximum item in the binary search tree
+     * 
+     * Precondition: None
+     * Postcondition: Return the maximum value held in the binary search. If the
+     *    tree is empty then a garbage value is returned
+     * 
+     * Worst-case time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    T BinarySearchTree<T>::getMaximum() const {
+       if(_root == NULL)
+          return T(); //garbage
+       Node * maxLocation = NULL;
+       getMaximumHelper(_root, maxLocation); //using non-empty subtree    
+       return maxLocation->data;
+    }
+    
+    /**
+     * Determine the maximum item for the subtree rooted at subtreeRoot
+     * 
+     * Precondition: subtreeRoot is a node in the binary search tree.
+     *    maxLocation points to null
+     * Postcondition: maxLocation points to the maximum item in the subtree
+     *    rooted at subtreeRoot (points to NULL for an empty subtree)
+     * 
+     * Worst-case time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    void BinarySearchTree<T>::getMaximumHelper(Node * subtreeRoot,
+                                               Node * &maxLocation) const {
+       maxLocation = subtreeRoot;
+       if(maxLocation) // using non-empty subtree rooted at "subtreeRoot"
+          while(maxLocation->right)
+             maxLocation = maxLocation->right;
+    }
+    
+    /**
+     * Determine the minimum item in the binary search tree
+     * 
+     * Precondition: None
+     * Postcondition: Return the minimum value held in the binary search. If the
+     *    tree is empty then a garbage value is returned
+     * 
+     * Worst-case time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    T BinarySearchTree<T>::getMinimum() const {
+       if(_root == NULL) //validating subtree
+          return T(); // garbage
+       Node * minLocation = NULL;
+       getMinimumHelper(_root, minLocation); // using non-empty subtree
+       return minLocation->data;
+    }
+    
+    /**
+     * Determine the minimum item for the subtree rooted at subtreeRoot
+     * 
+     * Precondition: subtreeRoot is a node in the binary seach tree.
+     *    minLocation points to null
+     * Postcondition: minLocation points to the minimum item in the subtree
+     *    rooted at subtreeRoot (points to NULL for an empty subtree)
+     * 
+     * Worst-case time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    void BinarySearchTree<T>::getMinimumHelper(Node * subtreeRoot, 
+                                               Node * &minLocation) const {
+       minLocation = subtreeRoot;
+       if(minLocation) //ensures using non-empty subtree rooted at subtreeRoot
+          while(minLocation->left)
+             minLocation = minLocation->left;
+    }
+    
+    /**
+     * Determine the number of levels in a binary search tree. For example,
+     * a binary tree with a single node has height 1 and a binary tree
+     * with a root and a single child has height 2
+     * 
+     * Precondition: none
+     * Postcondition: Return the number of levels in this binary search tree
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    int BinarySearchTree<T>::getHeight() const {
+       int height = 0;
+       findHeight(_root, height);
+       return height;
+    }
+    
+    /**
+     * Determine the number of levels in a binary search tree. For example,
+     * a binary tree with a single node has height 1 and a binary tree
+     * with a root and a single child has height 2
+     * 
+     * Precondition: Subtree rooted at "subtreeRoot".  Parameter "height" is
+     *    storage to hold height data.      
+     * Postcondition: Parameter "height" is modified with height of tree.
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::findHeight(Node * subtreeRoot, int& height) const {
+       if(subtreeRoot) {
+          static int counter = 0;
+          ++counter;
+          findHeight(subtreeRoot->left, height);
+          findHeight(subtreeRoot->right, height);
+          if(counter > height)
+             height = counter;
+          --counter;      
+       }
+    }
+    
+    /**
+     * Determine the number of vertices in the binary search tree.
+     * 
+     * Precondition: none
+     * Postcondition: Return the number of vertices in this binary search tree
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    int BinarySearchTree<T>::getSize() const {
+       int size = 0;
+       findSize(_root, size);
+       return size;      
+    }
+    
+    /**
+     * Determine the number of vertices in the binary search tree.
+     * 
+     * Precondition: Subtree rooted at "subtreeRoot".  Parameter "size" is
+     *    storage to hold size data.      
+     * Postcondition: Parameter "size" is modified with number of vertices.
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::findSize(Node * subtreeRoot, int& size) const {
+       if(subtreeRoot) {
+          ++size;
+          findSize(subtreeRoot->left, size);
+          findSize(subtreeRoot->right, size);        
+       }
+    }
+    
+    /*****************************************************************************/
+    /********************** Traversals *******************************************/
+    /*****************************************************************************/
+    
+    /**
+     * Inorder traversal of Binary Search Tree
+     * 
+     * Precondition: ostream out is open
+     * Postcondition: Binary Search Tree has been inorder traversed and values in 
+     *    nodes have been output to out
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::inorder(std::ostream& out) const {
+       inorderHelper(out, _root);   
+    }
+    
+    /**
+     * Inorder traversal helper function
+     * 
+     * Precondition: ostream out is open. subtreePtr points to a subtree of 
+     *    this binary search tree
+     * Postcondition: subtree with root pointed to by subtreePtr has been output
+     *    to output
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::inorderHelper(std::ostream& out, 
+                                            Node * subtreePtr) const {
+       if(subtreePtr) {      
+          inorderHelper(out, subtreePtr->left);
+          out &lt;&lt;(subtreePtr->data) &lt;&lt;" ";
+          inorderHelper(out, subtreePtr->right);
+       }
+    }
+    
+    /**
+     * Preorder traversal of Binary Search Tree
+     * 
+     * Precondition: ostream out is open
+     * Postcondition: Binary Search Tree has been preorder traversed and values in 
+     *    nodes have been output to out
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::preorder(std::ostream& out) const {
+       preorderHelper(out, _root);
+    }
+    
+    /**
+     * Preorder traversal helper function
+     * 
+     * Precondition: ostream out is open. subtreePtr points to a subtree of 
+     *    this binary search tree
+     * Postcondition: subtree with root pointed to by subtreePtr has been output
+     *    to output
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::preorderHelper(std::ostream& out, 
+                                            Node * subtreePtr) const {
+       if(subtreePtr) {
+          out &lt;&lt;(subtreePtr->data) &lt;&lt;" ";
+          preorderHelper(out, subtreePtr->left);
+          preorderHelper(out, subtreePtr->right);
+       }   
+    }
+    
+    /**
+     * Postorder traversal of Binary Search Tree
+     * 
+     * Precondition: ostream out is open
+     * Postcondition: Binary Search Tree has been postorder traversed and values in 
+     *    nodes have been output to out
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::postorder(std::ostream& out) const {
+       postorderHelper(out, _root);
+    }
+    
+    /**
+     * Postorder traversal helper function
+     * 
+     * Precondition: ostream out is open. subtreePtr points to a subtree of 
+     *    this binary search tree
+     * Postcondition: subtree with root pointed to by subtreePtr has been output
+     *    to output
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::postorderHelper(std::ostream& out, 
+                                            Node * subtreePtr) const {
+       if(subtreePtr) {
+          postorderHelper(out, subtreePtr->left);
+          postorderHelper(out, subtreePtr->right);
+          out &lt;&lt;(subtreePtr->data) &lt;&lt;" ";
+       }
+    }
+    
+    /*****************************************************************************/
+    /********************** Operations *******************************************/
+    /*****************************************************************************/
+    
+    /**
+     * Insert item into the binary search tree
+     * 
+     * Precondition: item is not present in the binary search tree
+     * Postcondition: Binary search tree has been modified with the item inserted
+     *    at the proper position to maintain the binary search tree property.
+     *    Returns true if item is inserted into the tree and false otherwise
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    bool BinarySearchTree<T>::insert(const T& item) {
+       // create a  new node
+       Node * newNode = new Node(item);
+       if(newNode==NULL) {
+          if(debug)
+             std::cerr &lt;&lt;"Failed to allocate memory!" &lt;&lt;std::endl;
+          return false;
+       }      
+       
+       // if we are inserting into an empty tree
+       if (_root==NULL) {
+          _root = newNode;
+          return true;
+       }
+       
+       // if the item is the root of the tree
+       if (_root->data==item) {
+          delete newNode;
+          return false;
+       }
+      
+       // find the parent of the item
+       Node * parentLocation = NULL;
+       searchParent(item,_root,parentLocation);
+       
+       // add the new node to the tree, if it is not already there
+       if (item &lt; parentLocation->data) { // left child
+          if (parentLocation->left!=NULL) {
+             delete newNode;
+             return false;
+          }
+          parentLocation->left = newNode;
+       } else { // right child
+          if (parentLocation->right!=NULL) {
+             delete newNode;
+             return false;
+          }
+          parentLocation->right = newNode;
+       }
+       
+       // set the parent of the new node
+       newNode->parent = parentLocation;
+       
+       return true;
+    }
+    
+    /**
+     * Remove item from the binary search tree
+     * 
+     * Precondition: none
+     * Postcondition: binary search tree has been modified with  the item
+     *    removed, if present. binary search tree property is maintained.
+     *    returns true if insertion is successful and false otherwise.
+     * 
+     * Worst-Case Time Complexity: O(h), where h is the height of the tree
+     */
+    template <class T>
+    bool BinarySearchTree<T>::remove(const T& item) {
+       // find the item in the binary search tree
+       Node * itemLocation = NULL;
+       searchHelper(item,_root,itemLocation);
+       
+       // determine the item is in the binary search tree
+       if (itemLocation==NULL) {
+          return false;
+       }
+       
+       // get the parent of the item to be deleted
+       Node * itemParent = itemLocation->parent;
+       
+       // The node containing item has 2 children
+       if (itemLocation->left != NULL && itemLocation->right!=NULL) {      
+          // Find the inorder successor node of item
+          Node * itemSuccessor = NULL;
+          getSuccessorHelper(itemLocation, itemSuccessor);
+          
+          // copy the data
+          itemLocation->data = itemSuccessor->data;
+          
+          // redirect the itemLocation pointer to the successor
+          // since that is now what will be deleted
+          itemParent = itemSuccessor->parent;
+          itemLocation = itemSuccessor;
+          
+          //itemLocation->data = -1; //original line
+          itemLocation->data = T(); //change to work with generic data type
+       }
+       
+       // We now know that the item being deleted has 0 or 1 children
+       
+       // determine which subtree, if any, has children
+       Node * itemSubtree = itemLocation->left;
+       if (itemSubtree == NULL) {
+          itemSubtree = itemLocation->right;
+       }
+          
+       if (itemParent == NULL) { // root being deleted
+          _root = itemSubtree;
+          if (_root!=NULL) {
+             _root->parent=NULL;       
+          }
+       } else if (itemParent->left == itemLocation) { 
+          itemParent->left = itemSubtree;
+       } else {
+          itemParent->right = itemSubtree;
+       }
+       
+       if (itemSubtree!=NULL) {
+          itemSubtree->parent = itemParent;
+       }
+          
+       // free the memory for this item
+       delete itemLocation;
+          
+       return true;
+    }
+    
+    /*****************************************************************************/
+    /********************** Input/Output *****************************************/
+    /*****************************************************************************/
+    
+    /**
+     * Graphic output of binary search tree
+     * 
+     * Precondition: ostream out is open
+     * Postcondition: Graphical representation of binary search tree has been 
+     *    output to out.
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::displayGraphic(std::ostream& out) const {
+       displayGraphicHelper(out,0,_root);
+    }
+    
+    /**
+     * Graphic output of binary search tree helper function
+     * 
+     * Precondition: ostream out is open. subtreePtr points to a subtree of 
+     *    this binary search tree
+     * Postcondition: Graphical representation of subtree with root pointed to
+     *    by subtreePtr has been output to out, indented indent spaces.
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::displayGraphicHelper(std::ostream& out, 
+                                                   const int& indent,
+                                                   Node * subtreePtr) const {
+       if (subtreePtr==NULL) {
+          return;
+       }
+       
+       displayGraphicHelper(out,indent+INDENT_VALUE, subtreePtr->right);
+       out &lt;&lt; std::setw(indent) &lt;&lt; " " &lt;&lt; subtreePtr->data &lt;&lt; std::endl;
+       displayGraphicHelper(out,indent+INDENT_VALUE, subtreePtr->left);
+    }
+    
+    /*****************************************************************************/
+    /********************** Operators ********************************************/
+    /*****************************************************************************/
+    
+    /**
+     * Assign a copy of a binary search tree object to the current object
+     * 
+     * Preconditions: N/A
+     * Postconditions: A copy of rhs has been assigned to this object. A non-const
+     *    reference to this binary search tree is returned.
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    BinarySearchTree<T>& BinarySearchTree<T>::operator=(const BinarySearchTree& 
+                                                              rhs) {
+       if (this != &rhs) {          
+          copyBinarySearchTree(rhs._root, _root);
+       }
+       return *this;
+    }
+    
+    /*****************************************************************************/
+    /********************** Functions ********************************************/
+    /*****************************************************************************/
+    
+    /**
+     * Copy the Binary Search Tree rooted at original
+     * 
+     * Preconditions: original is a Binary Search Tree
+     * Postcondition: copy holds a copy of the Binary Search Tree
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::copyBinarySearchTree(Node * original, Node * &copy) {
+       // ensure that any memory allocated by the copy is properly freed
+       deleteBinarySearchTree(copy);
+       copyBinarySearchTree(original, copy, NULL);
+    }
+    
+    /**
+     * Copy the Binary Search Tree rooted at original
+     * 
+     * Preconditions: original is a Binary Search Tree.  "parent" refers to
+     *    parent of current node.
+     * Postcondition: copy holds a copy of the Binary Search Tree
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::copyBinarySearchTree( Node * original, Node*& copy,
+                                                    Node** parent) {
+       if(original) {      
+          copy = new Node(original->data);
+          if(copy==NULL) {
+             if(debug)
+                std::cerr &lt;&lt;"Failed to allocate memory!" &lt;&lt;std::endl;
+             return;            
+          }        
+          copy->parent = parent? (*parent) :NULL;
+          copyBinarySearchTree(original->left, copy->left, &copy);
+          copyBinarySearchTree(original->right, copy->right, &copy);
+       }
+    }
+    
+    /**
+     * Delete the Binary Search Tree rooted at bstRoot
+     * 
+     * Preconditions: The life of the Binary Search Tree rooted at bstRoot is over
+     * Postconditions: Memory used by the Binary Search Tree rooted at bstRoot is
+     *    freed
+     * 
+     * Worst-Case Time Complexity: O(n)
+     */
+    template <class T>
+    void BinarySearchTree<T>::deleteBinarySearchTree(Node * &bstRoot) {
+       if(bstRoot) {
+          deleteBinarySearchTree(bstRoot->left);
+          deleteBinarySearchTree(bstRoot->right);
+          delete bstRoot;
+          bstRoot = NULL;
+       }
+    }
+    
+    #endif /* BST_H_ */
+
+
+
+
+
+
+
+
+
+
+
+
+    /******************************************************************************
+    *  File: main.cpp
+    *  Author:  Vaddanak Seng
+    *  Purpose: The main function is implemented to test BinarySearchTree
+    *     class template.      
+    ******************************************************************************/
+    
+    #include "bst.h"
+    
+    #include <iostream>
+    #include <string>
+    #include <sstream>
+    #include <vector>
+    #include <algorithm>
+    #include <typeinfo>
+    #include <exception>
+    #include <cstdlib>
+     
+    //forward declaration
+    template <class T>
+    class Fun;
+     
+    //function template prototypes
+    template <class T>
+    void tester(const BinarySearchTree<T>& bst, const T& data1, const T& data2);
+    
+    template <class T>
+    std::ostream& operator&lt;&lt;(std::ostream& out, const Fun<T>& rhs);
+     
+    /**
+    * Purpose:  Class Fun holds a single data member to test with
+    *     BinarySearchTree class.
+    * How-to-use:
+    *     1)  The default object is used to create a "garbage" object.
+    *     2)  Constructor with parameter type T holds argument value internally.
+    *     3)  The relational operators allow comparison between Fun objects.
+    *     4)  The Fun(const int&) was implemented, which converts int type
+    *         to Fun type, inorder for non-numeric types to work with provided
+    *         remove function,
+    *         particularly because of line "itemLocation->data = -1".
+    *     5)  This object type is displayed using operator&lt;&lt;(..).
+    */
+    template <class T>
+    class Fun {
+       public:
+       Fun() {} //used to construct garbage object
+       Fun(const T& d) { convert(d); }
+        
+       //convert int to this type; needed because of 
+       //line "itemLocation->data = -1" in provided remove function
+       Fun(const int& rhs) {
+          std::stringstream ss;
+          ss &lt;&lt;rhs;
+          data = ss.str();     
+       }
+       
+       bool operator==(const Fun& rhs) const { return data==rhs.data; }
+       bool operator!=(const Fun& rhs) const { return !operator==(rhs); }
+       bool operator&lt;(const Fun& rhs) const { return data&lt;rhs.data; }
+       bool operator&lt;=(const Fun& rhs) const { return data&lt;=rhs.data; }
+       bool operator>(const Fun& rhs) const { return data>rhs.data; }
+       bool operator>=(const Fun& rhs) const { return data>=rhs.data; }   
+          
+       private:
+       std::string data;      
+       
+       void convert(const T& input);
+          
+       friend std::ostream& operator&lt;&lt;(std::ostream& out, const Fun<T>& rhs) {
+          return out &lt;&lt;rhs.data;
+       }
+    };
+    
+    /**
+    * Purpose: It converts generic T type to string, if possible.
+    * Precondition: T type is expected to be convertible to string type.
+    * Postcondition: Value of T type is represented as string.     
+    */
+    template <class T>
+    void Fun<T>::convert(const T& input) {
+       try {
+          std::stringstream ss;
+          ss &lt;&lt;input;
+          data = ss.str();
+       }
+       catch(const std::exception ex) {
+          if(debug)
+             std::cerr &lt;&lt;"Failed to convert type " 
+                       &lt;&lt;typeid(T).name() &lt;&lt;std::endl;
+          std::exit(EXIT_FAILURE);                         
+       }
+    }
+     
+    /**
+    * Purpose: Function main tests BinarySearchTree class template. 
+    * Precondition: BinarySearchTree class template is defined and implemented.
+    * Postcondition: BinarySearchTree class was instantiated and member functions
+    *     performed respective tasks.  All public functions of the
+    *     BinarySearchTree are tested.  The destructor is executed and evident
+    *     as a result of a BinarySearchTree object going out of local scope and
+    *     no memory leak.     
+    */
+    int main(int argc, char** args) {
+       debug = true;
+       
+       //testing with int type; creating a simple tree
+       std::cout &lt;&lt;"\n=================================================\n";
+       std::cout &lt;&lt;"testing with int type; creating a simple tree\n";
+       BinarySearchTree<int> bstInt;       
+       bstInt.insert(5);
+       bstInt.insert(3);
+       bstInt.insert(6);
+       bstInt.insert(2);
+       bstInt.insert(4);
+       bstInt.insert(8);
+       bstInt.insert(7);   
+       
+       tester<int>(bstInt, 3, 9);
+    
+       //testing with int type; creating a balanced tree
+       std::cout &lt;&lt;"\n\n=================================================\n";
+       std::cout &lt;&lt;"testing with int type; creating a balanced tree\n";
+       
+       int arrInt[] = { 50, 15, 62, 5, 20, 58, 91, 3, 8, 37, 60, 24 };
+       BinarySearchTree<int> bstInt2;       
+       
+       for(size_t i = 0 ; i &lt; sizeof(arrInt)/sizeof(*arrInt); ++i)
+          bstInt2.insert(arrInt[i]);
+       
+       tester<int>(bstInt2, 60, 91);   
+       
+       //testing with user-defined type; creating a balanced tree
+       std::cout &lt;&lt;"\n\n=================================================\n";
+       std::cout &lt;&lt;"testing with user-defined type; creating a balanced tree\n";
+       
+       Fun<std::string> arr[] = { 
+          Fun<std::string>("NY"), Fun<std::string>("IL"), Fun<std::string>("GA"),
+          Fun<std::string>("RI"), Fun<std::string>("MA"), Fun<std::string>("PA"),
+          Fun<std::string>("DE"), Fun<std::string>("IN"), Fun<std::string>("VT"),
+          Fun<std::string>("TX"), Fun<std::string>("OH"), Fun<std::string>("WY") };
+          
+       Fun<std::string> MA("MA");
+       Fun<std::string> FL("FL");
+          
+       BinarySearchTree<Fun<std::string> > bstStates;
+       for(size_t i = 0 ; i &lt; sizeof(arr)/sizeof(*arr) ; ++i)
+          bstStates.insert(arr[i]);   
+       
+       tester<Fun<std::string> >(bstStates, MA, FL);
+       
+       //testing with user-defined type; creating a "linear" tree
+       std::cout &lt;&lt;"\n\n=================================================\n";
+       std::cout &lt;&lt;"testing with user-defined type; creating a \"linear\" tree\n";
+       
+       std::vector<Fun<std::string> > vStates(arr, arr+sizeof(arr)/sizeof(*arr));
+       std::sort(vStates.begin(), vStates.end());
+       
+       BinarySearchTree<Fun<std::string> > bstStates2;
+       std::vector<Fun<std::string> >::iterator iter = vStates.begin();
+       for( ; iter != vStates.end() ; ++iter)
+          bstStates2.insert(*iter);   
+       
+       tester<Fun<std::string> >(bstStates2, MA, FL);
+      
+       return 0;
+    }
+    
+    /**
+    * Purpose: Function template "tester" allows generic data types of
+    *     BinarySearchTree to be tested with the same operations. 
+    * Precondition: BinarySearchTree class template is defined and implemented.
+    * Postcondition: BinarySearchTree class was instantiated and member functions
+    *     performed respective tasks, with results output to console.
+    */
+    template <class T>
+    void tester(const BinarySearchTree<T>& bst, const T& data1, const T& data2) {
+       
+       std::cout &lt;&lt;"Display original tree:" &lt;&lt;std::endl;
+       bst.displayGraphic(std::cout);
+       
+       std::cout &lt;&lt;"Tree is copied by assignment:" &lt;&lt;std::endl;
+       BinarySearchTree<T> bstAssign;
+       bstAssign = bst;
+       bstAssign.displayGraphic(std::cout);
+       
+       std::cout &lt;&lt;"Tree is copied by copy-constructor:" &lt;&lt;std::endl;
+       BinarySearchTree<T> bstCopy(bst);
+       bstCopy.displayGraphic(std::cout);
+       
+       std::cout &lt;&lt;"Tree is empty:" &lt;&lt;std::endl;
+       BinarySearchTree<T> bstEmpty;
+       bstEmpty.displayGraphic(std::cout);      
+       
+       std::cout &lt;&lt;"bstEmpty isEmpty: " &lt;&lt;std::boolalpha &lt;&lt;bstEmpty.isEmpty()
+                 &lt;&lt;std::endl;
+       std::cout &lt;&lt;"bst isEmpty: " &lt;&lt;std::boolalpha &lt;&lt;bst.isEmpty() &lt;&lt;std::endl;             
+       std::cout &lt;&lt;"search for " &lt;&lt;data1 &lt;&lt;": " &lt;&lt;std::boolalpha 
+                 &lt;&lt;bst.search(data1) &lt;&lt;std::endl;
+       std::cout &lt;&lt;"search for " &lt;&lt;data2 &lt;&lt;": " &lt;&lt;std::boolalpha 
+                 &lt;&lt;bst.search(data2) &lt;&lt;std::endl;
+       std::cout &lt;&lt;"successor to " &lt;&lt;data1 &lt;&lt;": " &lt;&lt;bst.getSuccessor(data1) 
+                 &lt;&lt;std::endl;
+       std::cout &lt;&lt;"predecessor to " &lt;&lt;data1 &lt;&lt;": " &lt;&lt;bst.getPredecessor(data1) 
+                 &lt;&lt;std::endl;
+       std::cout &lt;&lt;"Minimum: " &lt;&lt;bst.getMinimum() &lt;&lt;std::endl;
+       std::cout &lt;&lt;"Maximum: " &lt;&lt;bst.getMaximum() &lt;&lt;std::endl;
+       std::cout &lt;&lt;"Height: " &lt;&lt;bst.getHeight() &lt;&lt;std::endl;   
+       std::cout &lt;&lt;"Size: " &lt;&lt;bst.getSize() &lt;&lt;std::endl;
+       
+       std::cout &lt;&lt;"inorder : ";
+       bst.inorder(std::cout); 
+       std::cout &lt;&lt;std::endl;
+       
+       std::cout &lt;&lt;"postorder : ";
+       bst.postorder(std::cout); 
+       std::cout &lt;&lt;std::endl;
+       
+       std::cout &lt;&lt;"preorder : ";
+       bst.preorder(std::cout); 
+       std::cout &lt;&lt;std::endl;
+       
+       std::cout &lt;&lt;"before remove " &lt;&lt;data1 &lt;&lt;": " &lt;&lt;std::endl;
+       bstCopy.displayGraphic(std::cout);
+       bstCopy.remove(data1);
+       std::cout &lt;&lt;"after remove " &lt;&lt;data1 &lt;&lt;": " &lt;&lt;std::endl;
+       bstCopy.displayGraphic(std::cout);
+       
+       std::cout &lt;&lt;"before insert " &lt;&lt;data1 &lt;&lt;": " &lt;&lt;std::endl;
+       bstCopy.displayGraphic(std::cout);
+       bstCopy.insert(data1);
+       std::cout &lt;&lt;"after insert " &lt;&lt;data1 &lt;&lt;": " &lt;&lt;std::endl;
+       bstCopy.displayGraphic(std::cout);
+    }
+
+
+
+
+
+
+
+</code>
+</pre>
+</BODY>
+</HTML>
